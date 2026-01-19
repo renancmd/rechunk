@@ -1,7 +1,7 @@
 # 🦖 Hytale: The Chunker
 
 ![GitHub all releases](https://img.shields.io/github/downloads/renancmd/the-chunker/total?style=for-the-badge&color=blue)
-![License](https://img.shields.io/github/license/renancmd/the-chunker?style=for-the-badge)
+![License](https://img.shields.io/badge/License-GPLv3-blue?style=for-the-badge)
 ![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey?style=for-the-badge)
 
 **Safely reset old terrain in Hytale to generate new updates (like the Zone 4 Underground Jungle) without losing your base.**
