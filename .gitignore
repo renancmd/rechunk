@@ -12,5 +12,3 @@ dist/
 venv/
 env/
 .env
-
-./test.py
