@@ -117,7 +117,13 @@ class HytaleChunkerGUI:
         scrollbar.pack(side="right", fill="y")
         self.base_listbox.config(yscrollcommand=scrollbar.set)
 
-        ttk.Button(base_frame, text="Remove Selected", command=self.remove_base).pack(anchor="e", pady=5)
+        # Action Buttons (Import/Export/Remove)
+        btn_frame = ttk.Frame(base_frame)
+        btn_frame.pack(fill="x", pady=5)
+
+        ttk.Button(btn_frame, text="Import List", command=self.import_bases).pack(side="left")
+        ttk.Button(btn_frame, text="Export List", command=self.export_bases).pack(side="left", padx=5)
+        ttk.Button(btn_frame, text="Remove Selected", command=self.remove_base).pack(side="right")
 
         # --- Radius ---
         ttk.Label(main_frame, text="Protection Radius (Chunks):").pack(anchor="w", pady=(10, 0))
@@ -219,6 +225,58 @@ class HytaleChunkerGUI:
         index = selection[0]
         self.base_listbox.delete(index)
         del self.bases_data[index]
+
+    def import_bases(self):
+        file_path = filedialog.askopenfilename(
+            title="Import Coordinates",
+            filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")]
+        )
+        if not file_path:
+            return
+
+        try:
+            with open(file_path, "r") as f:
+                lines = f.readlines()
+
+            count = 0
+            for line in lines:
+                # Regex to find X and Z. Flexible format.
+                # Looks for X=<val> and Z=<val> anywhere in the line.
+                import re
+                match = re.search(r"X\s*=\s*(-?\d+).*Z\s*=\s*(-?\d+)", line, re.IGNORECASE)
+                if match:
+                    x, z = int(match.group(1)), int(match.group(2))
+                    self.bases_data.append((x, z))
+                    self.base_listbox.insert(tk.END, f"Base: X={x}, Z={z}")
+                    count += 1
+            
+            messagebox.showinfo("Import", f"Successfully imported {count} bases.")
+            
+        except Exception as e:
+            messagebox.showerror("Import Error", f"Failed to import:\n{e}")
+
+    def export_bases(self):
+        if not self.bases_data:
+            messagebox.showwarning("Export", "No bases to export.")
+            return
+
+        file_path = filedialog.asksaveasfilename(
+            title="Export Coordinates",
+            defaultextension=".txt",
+            filetypes=[("Text Files", "*.txt")]
+        )
+        if not file_path:
+            return
+
+        try:
+            with open(file_path, "w") as f:
+                for x, z in self.bases_data:
+                    f.write(f"Base: X={x}, Z={z}\n")
+            
+            messagebox.showinfo("Export", "Export successful!")
+
+        except Exception as e:
+            messagebox.showerror("Export Error", f"Failed to export:\n{e}")
 
     def start_execution(self):
         # Validation
