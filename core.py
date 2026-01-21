@@ -1,6 +1,7 @@
 import os
 import re
 import zipfile
+import json
 from datetime import datetime
 
 # CONFIGURATION & PATTERNS
@@ -16,12 +17,43 @@ def get_app_data_dir():
 
 def get_backups_dir():
     """Returns the backups directory."""
-    path = os.path.join(get_app_data_dir(), "Backups")
-    os.makedirs(path, exist_ok=True)
     return path
 
-def get_hytale_saves_path():
+def get_config_path():
+    """Returns the path to the config file."""
+    return os.path.join(get_app_data_dir(), "config.json")
+
+def load_config():
+    """Loads the user configuration."""
+    config_path = get_config_path()
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r") as f:
+                return json.load(f)
+        except:
+            return {}
+    return {}
+
+def save_config(data):
+    """Saves the user configuration."""
+    config_path = get_config_path()
+    with open(config_path, "w") as f:
+        json.dump(data, f, indent=4)
+
+def get_hytale_saves_path(custom_path=None):
     """Returns the Hytale saves directory (Windows)."""
+    # 1. Prefer argument
+    if custom_path and os.path.isdir(custom_path):
+        return custom_path
+
+    # 2. Check config
+    config = load_config()
+    if "custom_saves_path" in config:
+        saved_path = config["custom_saves_path"]
+        if saved_path and os.path.isdir(saved_path):
+            return saved_path
+
+    # 3. Fallback to default
     appdata = os.getenv("APPDATA")
     if not appdata:
         raise RuntimeError("APPDATA not found. Are you running on Windows?")
@@ -138,8 +170,8 @@ def delete_regions(regions, chunks_path, progress_callback=None):
             progress_callback(index, total)
 
 # MAIN EXECUTION BRIDGE
-def run_processing(world_name, bases_list, radius, dry_run, do_backup, progress_callback=None):
-    saves_path = get_hytale_saves_path()
+def run_processing(world_name, bases_list, radius, dry_run, do_backup, progress_callback=None, custom_saves_path=None):
+    saves_path = get_hytale_saves_path(custom_saves_path)
     chunks_path = get_chunks_path(saves_path, world_name)
 
     regions = load_regions(chunks_path)

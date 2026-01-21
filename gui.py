@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 import threading
 import sys
 import os
@@ -18,8 +18,8 @@ class HytaleChunkerGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Hytale - The Chunker v1.0")
-        self.root.geometry("450x550")
-        self.root.resizable(False, False)
+        self.root.geometry("450x650")
+        self.root.resizable(True, True)
 
         try:
             self.root.iconbitmap(resource_path("icon.ico"))
@@ -28,6 +28,10 @@ class HytaleChunkerGUI:
 
         # Data storage for bases [(x, z), (x, z)]
         self.bases_data = []
+
+        # Load Config
+        self.config = core.load_config()
+        self.current_saves_path = self.config.get("custom_saves_path", "")
 
         # Integer Validator
         self.int_validator = self.root.register(self.validate_integer)
@@ -54,6 +58,21 @@ class HytaleChunkerGUI:
 
         main_frame = ttk.Frame(self.root, padding=15)
         main_frame.pack(fill="both", expand=True)
+
+        # --- Hytale Path Selection ---
+        ttk.Label(main_frame, text="Hytale Saves Path:").pack(anchor="w")
+        
+        path_frame = ttk.Frame(main_frame)
+        path_frame.pack(fill="x", pady=(0, 10))
+        
+        self.path_var = tk.StringVar(value=self.current_saves_path)
+        self.path_entry = ttk.Entry(path_frame, textvariable=self.path_var)
+        self.path_entry.pack(side="left", fill="x", expand=True)
+        
+        # Bind FocusOut to reload worlds when user types manually
+        self.path_entry.bind("<FocusOut>", lambda e: self.load_worlds())
+        
+        ttk.Button(path_frame, text="Browse", command=self.browse_path).pack(side="right", padx=(5, 0))
 
         # --- World Selection ---
         ttk.Label(main_frame, text="Select World:").pack(anchor="w")
@@ -127,15 +146,51 @@ class HytaleChunkerGUI:
         self.btn_execute = ttk.Button(main_frame, text="EXECUTE", command=self.start_execution)
         self.btn_execute.pack(fill="x", ipady=5)
 
+    def browse_path(self):
+        directory = filedialog.askdirectory()
+        if directory:
+            self.path_var.set(directory)
+            self.save_path_config()
+            self.load_worlds()
+
+    def save_path_config(self):
+        path = self.path_var.get().strip()
+        if path and os.path.isdir(path):
+            self.config["custom_saves_path"] = path
+            core.save_config(self.config)
+
     def load_worlds(self):
         try:
-            path = core.get_hytale_saves_path()
-            worlds = core.list_worlds(path)
+            # Use path from input if available, else default (via core logic)
+            custom_path = self.path_var.get().strip()
+            # If empty, core.get_hytale_saves_path(None) returns default/config path
+            # But we want to respect the Entry if it has something (valid or not)
+            # If Entry is empty, we fetch default and populate it
+            
+            real_path = core.get_hytale_saves_path(custom_path if custom_path else None)
+            
+            # If the entry was empty and we found a path, show it
+            if not custom_path and real_path:
+                 self.path_var.set(real_path)
+
+            worlds = core.list_worlds(real_path)
             self.world_combo["values"] = worlds
+            
             if worlds:
-                self.world_combo.current(0)
+                # If current selection is still valid, keep it, else select first
+                current = self.world_combo.get()
+                if current in worlds:
+                    self.world_combo.set(current)
+                else:
+                    self.world_combo.current(0)
+            else:
+                self.world_combo.set("")
+                
         except Exception as e:
-            messagebox.showerror("Error", f"Hytale saves not found:\n{e}")
+            # path might be invalid/not found
+            self.world_combo["values"] = []
+            self.world_combo.set("")
+            # Optional: print(e) or similar, but avoid popup loop on FocusOut
 
     def add_base(self):
         val_x = self.input_x.get()
@@ -174,6 +229,9 @@ class HytaleChunkerGUI:
             messagebox.showwarning("Warning", "Please add at least one base to protect.")
             return
 
+        # Auto-save config on execute
+        self.save_path_config()
+
         # Lock UI
         self.btn_execute.config(state="disabled")
         self.progress["value"] = 0
@@ -192,9 +250,11 @@ class HytaleChunkerGUI:
             do_bkp = self.backup.get()
 
             # Run Core
+            custom_path = self.path_var.get().strip()
             result = core.run_processing(
                 w_name, bases, rad, is_dry, do_bkp, 
-                progress_callback=self.update_progress
+                progress_callback=self.update_progress,
+                custom_saves_path=custom_path
             )
 
             # Report
