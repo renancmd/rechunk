@@ -1,35 +1,33 @@
-@RemoveButtonStyle = TextButtonStyle(
-  Default: (Background: #8b3a3a, LabelStyle: (FontSize: 11, TextColor: #ffffff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
-  Hovered: (Background: #9b4a4a, LabelStyle: (FontSize: 11, TextColor: #ffffff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center)),
-  Pressed: (Background: #7b2a2a, LabelStyle: (FontSize: 11, TextColor: #ffffff, RenderBold: true, HorizontalAlignment: Center, VerticalAlignment: Center))
-);
+$C = "../Common.ui";
 
 Group {
   LayoutMode: Left;
-  Anchor: (Height: 44);
-  Padding: (Left: 12, Right: 8, Top: 6, Bottom: 6);
+  Anchor: (Height: 46);
+  Padding: (Horizontal: 4, Vertical: 3);
 
   Group #BackgroundChunkEntry {
     FlexWeight: 1;
     LayoutMode: Top;
-     Background: #141c26(0.8);
+    Background: #141c26(0.8);
+    Padding: (Left: 10, Top: 3);
 
     Label #ChunkCoordinates {
       Text: "X, Z";
-      Anchor: (Height: 18);
-      Style: (FontSize: 13, TextColor: #ffffff, RenderBold: true, VerticalAlignment: Center);
+      Anchor: (Height: 19);
+      Style: (FontSize: 14, TextColor: #ffffff, RenderBold: true, VerticalAlignment: Center);
     }
 
     Label #BlockCoordinates {
       Text: "X, Z";
-      Anchor: (Height: 14);
-      Style: (FontSize: 9, TextColor: #6e7da1, VerticalAlignment: Center);
+      Anchor: (Height: 15);
+      Style: (FontSize: 11, TextColor: #96a9be, VerticalAlignment: Center);
     }
   }
 
-  TextButton #RemoveButton {
-    Text: "REMOVE";
-    Anchor: (Width: 70, Height: 28);
-    Style: @RemoveButtonStyle;
+  Group { Anchor: (Width: 6); }
+
+  $C.@SmallSecondaryTextButton #RemoveButton {
+    @Anchor = (Top: 4);
+    @Text = "Remove";
   }
 }

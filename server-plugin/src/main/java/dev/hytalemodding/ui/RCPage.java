@@ -11,6 +11,8 @@ import com.hypixel.hytale.server.core.Message;
 import com.hypixel.hytale.server.core.entity.UUIDComponent;
 import com.hypixel.hytale.server.core.entity.entities.Player;
 import com.hypixel.hytale.server.core.entity.entities.player.pages.InteractiveCustomUIPage;
+import com.hypixel.hytale.server.core.ui.DropdownEntryInfo;
+import com.hypixel.hytale.server.core.ui.LocalizableString;
 import com.hypixel.hytale.server.core.ui.builder.EventData;
 import com.hypixel.hytale.server.core.ui.builder.UICommandBuilder;
 import com.hypixel.hytale.server.core.ui.builder.UIEventBuilder;
@@ -34,8 +36,7 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
         public String buffer;
         public String action;
         public String index;
-        public boolean protect;
-        public boolean reset;
+        public String mode;
 
         // Get all interactive UI elements from RCPage.ui
         public static final BuilderCodec<SaveCoordsEventData> CODEC =
@@ -71,19 +72,24 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
                         )
                         .add()
                         .append(
-                                new KeyedCodec<>("@ProtectCheckBox", Codec.BOOLEAN),
-                                (SaveCoordsEventData obj, Boolean val) -> obj.protect = val,
-                                (SaveCoordsEventData obj) -> obj.protect
-                        )
-                        .add()
-                        .append(
-                                new KeyedCodec<>("@ResetCheckBox", Codec.BOOLEAN),
-                                (SaveCoordsEventData obj, Boolean val) -> obj.reset = val,
-                                (SaveCoordsEventData obj) -> obj.reset
+                                new KeyedCodec<>("@Mode", Codec.STRING),
+                                (SaveCoordsEventData obj, String val) -> obj.mode = val,
+                                (SaveCoordsEventData obj) -> obj.mode
                         )
                         .add()
                         .build();
     }
+
+    private static final int MAX_BUFFER = 9;
+
+    private static final String MODE_PROTECT = "Protect";
+    private static final String MODE_RESET = "Reset";
+
+    private static final String COLOR_ENTRY = "#141c26";
+    private static final String COLOR_ORIGIN_ENTRY = "#6b5220";
+
+    // Validation message shown inside the page; null hides it
+    private String statusText;
 
     public RCPage(@Nonnull PlayerRef playerRef) {
         super(playerRef, CustomPageLifetime.CanDismissOrCloseThroughInteraction, SaveCoordsEventData.CODEC);
@@ -98,8 +104,6 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
                         .append("@XCoord", "#XInput.Value")
                         .append("@ZCoord", "#ZInput.Value")
                         .append("@BufferInput", "#BufferInput.Value")
-                        .append("@ProtectCheckBox", "#ProtectCheckBox #CheckBox.Value")
-                        .append("@ResetCheckBox", "#ResetCheckBox #CheckBox.Value")
 
         );
     }
@@ -126,9 +130,10 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
                         .append("@XCoord", "#XInput.Value")
                         .append("@ZCoord", "#ZInput.Value")
                         .append("@BufferInput", "#BufferInput.Value")
-                        .append("@ProtectCheckBox", "#ProtectCheckBox #CheckBox.Value")
-                        .append("@ResetCheckBox", "#ResetCheckBox #CheckBox.Value")
         );
+
+        cmd.set("#StatusText.Text", statusText != null ? statusText : "");
+        cmd.set("#StatusText.Visible", statusText != null);
 
         sendUpdate(cmd, evt, false);
         cmd.set("#XInput.Value", "");
@@ -138,6 +143,7 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
     // Build the UI field that displays the selected coordinates
     public void buildCoordinatesList(UICommandBuilder commandBuilder, UIEventBuilder eventBuilder, List<BlockPos> pos, UUID playerId) {
         commandBuilder.clear("#CoordinatesList");
+        commandBuilder.set("#SelectionCount.Text", "Selected chunks (" + (pos == null ? 0 : pos.size()) + ")");
 
         if (pos == null || pos.isEmpty()) return;
 
@@ -153,9 +159,9 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
             boolean isOrigin = SelectionManager.isOrigin(playerId, p);
 
             if (isOrigin) {
-                commandBuilder.set(selector + " #BackgroundChunkEntry.Background", "#FFAA00"); // Highlight Color
+                commandBuilder.set(selector + " #BackgroundChunkEntry.Background", COLOR_ORIGIN_ENTRY);
             } else {
-                commandBuilder.set(selector + " #BackgroundChunkEntry.Background", "#00000000"); // Transparent
+                commandBuilder.set(selector + " #BackgroundChunkEntry.Background", COLOR_ENTRY);
             }
 
             eventBuilder.addEventBinding(
@@ -178,6 +184,19 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
     ) {
         cmd.append("Pages/RCPage.ui");
 
+        List<DropdownEntryInfo> bufferEntries = new ArrayList<>();
+        for (int i = 0; i <= MAX_BUFFER; i++) {
+            bufferEntries.add(new DropdownEntryInfo(LocalizableString.fromString(String.valueOf(i)), String.valueOf(i)));
+        }
+        cmd.set("#BufferInput.Entries", bufferEntries);
+        cmd.set("#BufferInput.Value", "0");
+
+        cmd.set("#ModeInput.Entries", List.of(
+                new DropdownEntryInfo(LocalizableString.fromString("Protect selection"), MODE_PROTECT),
+                new DropdownEntryInfo(LocalizableString.fromString("Reset selection"), MODE_RESET)
+        ));
+        cmd.set("#ModeInput.Value", MODE_PROTECT);
+
         List<BlockPos> pos = null;
         UUIDComponent uuidComponent = store.getComponent(ref, UUIDComponent.getComponentType());
         if (uuidComponent != null) {
@@ -191,8 +210,7 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
                 "#StartButton",
                 new EventData()
                         .append("Action", "StartRegen")
-                        .append("@ProtectCheckBox", "#ProtectCheckBox #CheckBox.Value")
-                        .append("@ResetCheckBox", "#ResetCheckBox #CheckBox.Value")
+                        .append("@Mode", "#ModeInput.Value")
         );
 
         evt.addEventBinding(
@@ -207,8 +225,8 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
 
         evt.addEventBinding(
                 CustomUIEventBindingType.Activating,
-                "#CancelButton",
-                new EventData().append("Action", "Cancel")
+                "#ClearButton",
+                new EventData().append("Action", "Clear")
         );
 
         evt.addEventBinding(
@@ -230,16 +248,16 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
 
         PlayerRef playerRef = store.getComponent(ref, PlayerRef.getComponentType()); // Get the player reference
 
+        statusText = null;
+
         switch (data.action) {
             case "StartRegen":
                 // Validation: Check Checkbox States
-                if (data.protect && data.reset) {
-                    playerRef.sendMessage(Message.raw("Error: You cannot select both Protect and Reset modes."));
-                    return;
-                }
-                if (!data.protect && !data.reset) {
-                    playerRef.sendMessage(Message.raw("Error: Please select a mode (Protect or Reset)."));
-                    return;
+                boolean reset = MODE_RESET.equals(data.mode);
+                boolean protect = MODE_PROTECT.equals(data.mode);
+                if (!reset && !protect) {
+                    statusText = "Select a mode: Protect or Reset.";
+                    break;
                 }
 
                 // Get the current Selection List
@@ -249,11 +267,11 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
                 // Determine which chunks to regenerate
                 List<BlockPos> chunksToRegen = new ArrayList<>();
 
-                if (data.reset) {
+                if (reset) {
                     // RESET MODE: Regenerate ONLY the selected chunks
                     chunksToRegen.addAll(selectedChunks);
                 }
-                else if (data.protect) {
+                else {
                     // PROTECT MODE: Regenerate area around player EXCEPT selected chunks
                     // We define a "Work Area" (e.g., 5 chunks radius around player)
                     int workRadius = 32;
@@ -282,8 +300,8 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
                             }
                         }
                     } else {
-                        playerRef.sendMessage(Message.raw("Protect Mode requires at least one chunk selected to define the center."));
-                        return;
+                        statusText = "Protect mode needs at least one selected chunk to define the center.";
+                        break;
                     }
                 }
 
@@ -305,17 +323,30 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
                         playerRef.sendMessage(Message.raw("Error: Could not find player entity."));
                     }
                 } else {
-                    playerRef.sendMessage(Message.raw("No chunks found to regenerate."));
+                    statusText = "No chunks selected to regenerate.";
                 }
                 break;
             case "Save":
-                String x = (data.xCoord != null && !data.xCoord.isEmpty()) ? data.xCoord : "0";
-                String z = (data.zCoord != null && !data.zCoord.isEmpty()) ? data.zCoord : "0";
+                String x = data.xCoord != null ? data.xCoord.trim() : "";
+                String z = data.zCoord != null ? data.zCoord.trim() : "";
+                if (x.isEmpty() || z.isEmpty()) {
+                    statusText = "Enter both X and Z before adding.";
+                    break;
+                }
                 String buff = (data.buffer != null && !data.buffer.isEmpty()) ? data.buffer : "0";
 
-                int blockX = Integer.parseInt(x);
-                int blockZ = Integer.parseInt(z);
-                int radius = Integer.parseInt(buff);
+                int blockX;
+                int blockZ;
+                int radius;
+                try {
+                    blockX = Integer.parseInt(x);
+                    blockZ = Integer.parseInt(z);
+                    // The dropdown only offers 0..MAX_BUFFER, but the client value is not trusted
+                    radius = Math.clamp(Integer.parseInt(buff.trim()), 0, MAX_BUFFER);
+                } catch (NumberFormatException e) {
+                    statusText = "X and Z must be whole numbers.";
+                    break;
+                }
 
                 int chunkSize = 32;
 
@@ -338,10 +369,9 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
                 }
                 break;
 
-            case "Cancel":
+            case "Clear":
                 SelectionManager.clearSelections(uuidComponent.getUuid());
-                this.close();
-                return;
+                break;
 
             case "Close":
                 this.close();
