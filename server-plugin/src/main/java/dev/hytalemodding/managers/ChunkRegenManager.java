@@ -14,6 +14,7 @@ import com.hypixel.hytale.server.core.universe.world.storage.IChunkSaver;
 import dev.hytalemodding.world.pos.BlockPos;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -46,6 +47,7 @@ public class ChunkRegenManager {
         final Queue<BlockPos> queue;
         final int total;
         final List<BlockPos> failed = new ArrayList<>();
+        final Set<Long> removedChunks = new HashSet<>();
         int done = 0;
         int lastReportedStep = 0;
 
@@ -128,6 +130,8 @@ public class ChunkRegenManager {
 
             if (!removed || !pending.unloaded()) {
                 job.failed.add(pos);
+            } else {
+                job.removedChunks.add(ChunkUtil.indexChunk(pos.chunkX(), pos.chunkZ()));
             }
             job.done++;
         }
@@ -193,8 +197,15 @@ public class ChunkRegenManager {
             LOGGER.at(Level.WARNING).withCause(e).log("Could not flush chunk storage after regeneration");
         }
 
+        List<String> removedWarps = TeleporterCleanup.removeTeleporterWarps(job.world, job.removedChunks);
+
         // Refresh client chunks once at the end to ensure they see the changes
         refreshClientChunks(job.world, job.player);
+
+        if (!removedWarps.isEmpty()) {
+            notify(job.player, "Removed " + removedWarps.size() + " teleporter destination(s) from the reset area: "
+                    + String.join(", ", removedWarps), null);
+        }
 
         if (!flushed) {
             notify(job.player, "Warning: the chunk storage could not be flushed to disk. Check the server log.", COLOR_ERROR);
