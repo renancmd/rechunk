@@ -5,7 +5,7 @@ manual.close = Fechar
 manual.s1.title = O que o ReChunk faz
 manual.s1.body = Quando o Hytale recebe uma atualização, os novos biomas, criaturas e estruturas só aparecem em terreno que nunca foi gerado. Os lugares que você já explorou continuam como estavam.\n\
 \n\
-O ReChunk apaga os chunks que você escolher para que o jogo os gere de novo com o conteúdo novo, mantendo as suas construções a salvo. Um chunk é uma coluna do mundo com 32 por 32 blocos de largura.
+O ReChunk apaga os chunks que você escolher para que o jogo os gere de novo com o conteúdo novo. É você quem decide exatamente quais chunks são apagados, então os que têm as suas construções podem ficar intactos. Um chunk é uma coluna do mundo com 32 por 32 blocos de largura.
 
 manual.s2.title = Antes de começar
 manual.s2.body = - Um chunk apagado não pode ser recuperado pelo ReChunk. Tudo o que foi construído nele é perdido.\n\
@@ -16,23 +16,23 @@ manual.s2.body = - Um chunk apagado não pode ser recuperado pelo ReChunk. Tudo 
 manual.s3.title = Selecionando chunks
 manual.s3.body = Abra a tela com /rechunk.\n\
 \n\
-1. Digite o X e o Z de um bloco, ou clique em "Use my position" para preencher com o lugar onde você está. Aperte F7 no jogo para ver as coordenadas.\n\
+1. Digite o X e o Z de um bloco, ou clique em "Use my position" para preencher com o lugar onde você está.\n\
 2. Escolha o buffer. Ele adiciona os chunks em volta daquela posição: 0 seleciona só aquele chunk, 1 seleciona um quadrado de 3 por 3, 2 seleciona 5 por 5, até 9 (19 por 19).\n\
 3. Clique em "Add to selection". Os chunks aparecem na lista à direita, e o que você digitou fica destacado.\n\
 \n\
-Você pode repetir isso para vários lugares. Use "Remove" para tirar um chunk da lista ou "Clear" para esvaziá-la.\n\
+Você pode repetir isso para vários lugares. Um chunk só aparece uma vez na lista, mesmo que você o adicione de novo. Use "Remove" para tirar um chunk da lista ou "Clear" para esvaziá-la.\n\
 \n\
-A sua seleção fica salva, então continua lá depois que você sai do mundo e volta.
+A sua seleção fica salva, então continua lá depois que você sai do mundo e volta. Ela é esvaziada quando uma regeneração começa.
 
 manual.s4.title = Os dois modos
-manual.s4.body = Protect selection: mantém os chunks da sua lista e apaga tudo em volta deles. A área apagada é um quadrado de 65 por 65 chunks (cerca de 1.000 blocos em cada direção), centrado no primeiro chunk da lista. Use para manter a sua base e renovar o mundo em volta dela.\n\
+manual.s4.body = Protect selection: mantém os chunks da sua lista e apaga tudo em volta deles. A área apagada é um quadrado de 65 por 65 chunks (cerca de 1.000 blocos em cada direção), centrado no primeiro chunk da lista, por isso precisa de pelo menos um chunk selecionado. Use para manter a sua base e renovar o mundo em volta dela.\n\
 \n\
 Reset selection: apaga somente os chunks da sua lista e não mexe no resto do mundo. Use para renovar um lugar específico.
 
 manual.s5.title = Início, progresso e cancelamento
 manual.s5.body = Clique em "Start". Uma confirmação mostra quantos chunks serão apagados e quais teletransportadores serão afetados. Nada é apagado até você clicar em "Regenerate".\n\
 \n\
-A tela então se fecha e o progresso aparece no chat, em porcentagem e em quantidade de chunks. Os erros também aparecem no chat, em vermelho.\n\
+A tela então se fecha e o progresso aparece no chat, em porcentagem e em quantidade de chunks. Os erros também aparecem no chat, em vermelho. Quando termina, o terreno à sua volta é recarregado.\n\
 \n\
 Só uma regeneração pode rodar por vez em cada mundo. Para interromper, use /rechunk cancel. Os chunks já processados ainda serão regenerados; os restantes ficam como estavam.
 
@@ -41,7 +41,17 @@ manual.s6.body = Um teletransportador que esteja em um chunk apagado é removido
 \n\
 Os pontos criados com /warp set são mantidos, porque são apenas uma posição.
 
-manual.s7.title = Comandos
-manual.s7.body = /rechunk - abre a tela do ReChunk.\n\
+manual.s7.title = Presets
+manual.s7.body = Um preset é uma cópia de uma seleção, com um nome, para você não precisar selecionar os mesmos chunks de novo a cada atualização.\n\
+\n\
+Abra a tela de presets com /rechunk presets. Monte antes a sua seleção em /rechunk, depois digite um nome e clique em "Save selection as preset". Na mesma tela você pode renomear ou apagar um preset.\n\
+\n\
+Para usar um, abra /rechunk, escolha-o em "Presets" e clique em "Add preset". Os chunks dele são somados ao que já está selecionado, e os que já estavam lá são ignorados.\n\
+\n\
+Os nomes podem ter até 24 caracteres e não podem se repetir. Você pode guardar até 20 presets. Os presets são só seus e pertencem a este mundo.
+
+manual.s8.title = Comandos
+manual.s8.body = /rechunk - abre a tela do ReChunk.\n\
+/rechunk presets - abre a tela de presets.\n\
 /rechunk manual - abre este manual.\n\
 /rechunk cancel - interrompe a regeneração em andamento no seu mundo.

@@ -15,13 +15,26 @@ import java.util.UUID;
 import java.util.logging.Level;
 
 /**
- * Reads and writes one JSON file per player, so selections survive a server restart.
+ * Reads and writes one JSON file per player, so selections and presets survive a server restart.
  */
 public class SelectionStore {
 
     // Shape of the file on disk
     public static class SavedSelection {
         public List<SavedChunk> chunks = new ArrayList<>();
+        public List<SavedPreset> presets = new ArrayList<>();
+    }
+
+    public static class SavedPreset {
+        public String name;
+        public List<SavedChunk> chunks = new ArrayList<>();
+
+        public SavedPreset() {}
+
+        public SavedPreset(String name, List<SavedChunk> chunks) {
+            this.name = name;
+            this.chunks = chunks;
+        }
     }
 
     public static class SavedChunk {

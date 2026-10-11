@@ -6,7 +6,7 @@ $C = "../Common.ui";
 $C.@PageOverlay {}
 
 $C.@DecoratedContainer {
-  Anchor: (Width: 780, Height: 640);
+  Anchor: (Width: 900, Height: 720);
 
   #Title {
     $C.@Title #ManualTitle {
@@ -58,7 +58,10 @@ $C.@DecoratedContainer {
       Label #S6Body { Anchor: (Bottom: 18); Style: @BodyStyle; }
 
       Label #S7Title { Anchor: (Bottom: 6); Style: $C.@SubtitleStyle; }
-      Label #S7Body { Style: @BodyStyle; }
+      Label #S7Body { Anchor: (Bottom: 18); Style: @BodyStyle; }
+
+      Label #S8Title { Anchor: (Bottom: 6); Style: $C.@SubtitleStyle; }
+      Label #S8Body { Style: @BodyStyle; }
     }
 
     $C.@SecondaryTextButton #CloseButton {

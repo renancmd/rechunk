@@ -42,6 +42,7 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
         public String action;
         public String index;
         public String mode;
+        public String preset;
 
         // Get all interactive UI elements from RCPage.ui
         public static final BuilderCodec<SaveCoordsEventData> CODEC =
@@ -82,6 +83,12 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
                                 (SaveCoordsEventData obj) -> obj.mode
                         )
                         .add()
+                        .append(
+                                new KeyedCodec<>("@Preset", Codec.STRING),
+                                (SaveCoordsEventData obj, String val) -> obj.preset = val,
+                                (SaveCoordsEventData obj) -> obj.preset
+                        )
+                        .add()
                         .build();
     }
 
@@ -95,6 +102,8 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
 
     // Validation message shown inside the page; null hides it
     private String statusText;
+    // Neutral feedback about what an action did; null hides it
+    private String infoText;
 
     // Coordinates to write into the X/Z inputs on the next refresh
     private Integer fillX;
@@ -153,6 +162,8 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
 
         cmd.set("#StatusText.Text", statusText != null ? statusText : "");
         cmd.set("#StatusText.Visible", statusText != null);
+        cmd.set("#InfoText.Text", infoText != null ? infoText : "");
+        cmd.set("#InfoText.Visible", infoText != null);
 
         if (fillX != null && fillZ != null) {
             cmd.set("#XInput.Value", String.valueOf(fillX));
@@ -261,6 +272,22 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
 
         evt.addEventBinding(CustomUIEventBindingType.Activating, "#UsePositionButton", actionOnly("UsePosition"));
 
+        // Presets are created in their own page; here they can only be added to the selection
+        if (uuidComponent != null) {
+            List<DropdownEntryInfo> presetEntries = new ArrayList<>();
+            SelectionManager.getPresets(uuidComponent.getUuid()).forEach((name, size) ->
+                    presetEntries.add(new DropdownEntryInfo(LocalizableString.fromString(name + " (" + size + ")"), name)));
+            cmd.set("#PresetInput.Entries", presetEntries);
+            if (!presetEntries.isEmpty()) cmd.set("#PresetInput.Value", presetEntries.get(0).value());
+        }
+        evt.addEventBinding(
+                CustomUIEventBindingType.Activating,
+                "#AddPresetButton",
+                new EventData()
+                        .append("Action", "AddPreset")
+                        .append("@Preset", "#PresetInput.Value")
+        );
+
         evt.addEventBinding(
                 CustomUIEventBindingType.Activating,
                 "#CloseButton",
@@ -281,6 +308,7 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
         PlayerRef playerRef = store.getComponent(ref, PlayerRef.getComponentType()); // Get the player reference
 
         statusText = null;
+        infoText = null;
 
         switch (data.action) {
             case "StartRegen":
@@ -368,6 +396,21 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
                     statusText = "No chunks selected to regenerate.";
                 }
                 break;
+            case "AddPreset":
+                if (data.preset == null || data.preset.isEmpty()) {
+                    statusText = "You have no presets yet. Create one with /rechunk presets.";
+                    break;
+                }
+
+                int[] presetCounts = SelectionManager.addPresetToSelection(uuidComponent.getUuid(), data.preset);
+                if (presetCounts == null) {
+                    statusText = "That preset no longer exists.";
+                    break;
+                }
+                infoText = "Added " + presetCounts[0] + " chunk(s) from \"" + data.preset + "\"."
+                        + (presetCounts[1] > 0 ? " " + presetCounts[1] + " were already selected." : "");
+                break;
+
             case "UsePosition":
                 TransformComponent transform = store.getComponent(ref, TransformComponent.getComponentType());
                 if (transform == null) {
@@ -402,6 +445,8 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
                 }
 
                 int chunkSize = 32;
+                int addedChunks = 0;
+                int repeatedChunks = 0;
 
                 for (int xOffset = -radius; xOffset <= radius; xOffset++) {
                     for (int zOffset = -radius; zOffset <= radius; zOffset++) {
@@ -410,10 +455,21 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
 
                         boolean isOrigin = (xOffset == 0 && zOffset == 0);
 
-                        SelectionManager.addSelection(uuidComponent.getUuid(), targetBlockX, targetBlockZ, isOrigin);
+                        if (SelectionManager.addSelection(uuidComponent.getUuid(), targetBlockX, targetBlockZ, isOrigin)) {
+                            addedChunks++;
+                        } else {
+                            repeatedChunks++;
+                        }
                     }
                 }
                 SelectionManager.save(uuidComponent.getUuid());
+
+                // A chunk is only ever listed once
+                if (repeatedChunks > 0) {
+                    infoText = addedChunks == 0
+                            ? "Those chunks are already selected."
+                            : "Added " + addedChunks + " chunk(s). " + repeatedChunks + " were already selected.";
+                }
                 break;
 
             case "Remove":

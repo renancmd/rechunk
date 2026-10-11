@@ -47,7 +47,7 @@ public class RCManualPage extends InteractiveCustomUIPage<RCManualPage.ManualEve
     private static final String KEY_PREFIX = "rechunk.manual.";
     private static final String DEFAULT_LANGUAGE = "en-US";
     private static final List<String> LANGUAGES = List.of(DEFAULT_LANGUAGE, "pt-BR");
-    private static final int SECTION_COUNT = 7;
+    private static final int SECTION_COUNT = 8;
 
     public RCManualPage(@Nonnull PlayerRef playerRef) {
         super(playerRef, CustomPageLifetime.CanDismissOrCloseThroughInteraction, ManualEventData.CODEC);

@@ -18,6 +18,7 @@ public class RCCommand extends AbstractPlayerCommand {
         super("rechunk", "Open rechunk page.");
         addSubCommand(new RCManualCommand());
         addSubCommand(new RCCancelCommand());
+        addSubCommand(new RCPresetsCommand());
     }
 
     @Override

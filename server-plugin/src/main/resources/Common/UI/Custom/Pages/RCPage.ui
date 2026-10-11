@@ -6,7 +6,7 @@ $C = "../Common.ui";
 $C.@PageOverlay {}
 
 $C.@DecoratedContainer {
-  Anchor: (Width: 900, Height: 620);
+  Anchor: (Width: 1000, Height: 720);
 
   #Title {
     $C.@Title {
@@ -18,7 +18,7 @@ $C.@DecoratedContainer {
     LayoutMode: Left;
 
     Group #InputPanel {
-      Anchor: (Width: 380);
+      Anchor: (Width: 420);
       LayoutMode: Top;
 
       Group {
@@ -123,7 +123,46 @@ $C.@DecoratedContainer {
         }
       }
 
+      Group { Anchor: (Height: 12); }
+
+      Group {
+        LayoutMode: Top;
+        Background: @PanelBackground;
+        Padding: (Full: 12);
+
+        $C.@Subtitle {
+          @Text = "Presets";
+        }
+
+        Group {
+          LayoutMode: Left;
+          Anchor: (Height: 35);
+
+          $C.@DropdownBox #PresetInput {
+            Anchor: (Width: 270, Height: $C.@DropdownBoxHeight);
+          }
+
+          Group { Anchor: (Width: 8); }
+
+          $C.@SmallSecondaryTextButton #AddPresetButton {
+            @Text = "Add preset";
+          }
+        }
+
+        Label {
+          Anchor: (Top: 8);
+          Style: @HintStyle;
+          Text: "Adds a saved list of chunks to the selection. Create presets with /rechunk presets.";
+        }
+      }
+
       Group { FlexWeight: 1; }
+
+      Label #InfoText {
+        Anchor: (Bottom: 8);
+        Style: (...$C.@DefaultLabelStyle, Wrap: true, TextColor: #8fbf8f, FontSize: 14);
+        Visible: false;
+      }
 
       Label #StatusText {
         Anchor: (Bottom: 8);

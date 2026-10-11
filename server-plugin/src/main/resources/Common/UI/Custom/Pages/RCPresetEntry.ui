@@ -1,0 +1,23 @@
+Group {
+  LayoutMode: Left;
+  Anchor: (Height: 40);
+  Padding: (Horizontal: 4, Vertical: 3);
+
+  Group {
+    FlexWeight: 1;
+    LayoutMode: Left;
+    Background: #141c26(0.8);
+    Padding: (Horizontal: 10);
+
+    Label #PresetName {
+      Text: "Preset";
+      FlexWeight: 1;
+      Style: (FontSize: 14, TextColor: #ffffff, RenderBold: true, VerticalAlignment: Center);
+    }
+
+    Label #PresetSize {
+      Text: "0 chunks";
+      Style: (FontSize: 13, TextColor: #96a9be, VerticalAlignment: Center);
+    }
+  }
+}
