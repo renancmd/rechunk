@@ -294,10 +294,13 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
                     if (playerEntity != null) {
                         World world = playerEntity.getWorld();
 
-                        ChunkRegenManager.startRegeneration(world, playerRef, chunksToRegen);
-
-                        playerRef.sendMessage(Message.raw("Starting regeneration of " + chunksToRegen.size() + " chunks..."));
+                        // The job keeps running on the world thread and reports through chat,
+                        // so the page is closed and the selection reset before it starts.
+                        SelectionManager.clearSelections(uuidComponent.getUuid());
                         this.close();
+
+                        ChunkRegenManager.startRegeneration(world, playerRef, chunksToRegen);
+                        return;
                     } else {
                         playerRef.sendMessage(Message.raw("Error: Could not find player entity."));
                     }
@@ -338,11 +341,11 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
             case "Cancel":
                 SelectionManager.clearSelections(uuidComponent.getUuid());
                 this.close();
-                break;
+                return;
 
             case "Close":
                 this.close();
-                break;
+                return;
         }
 
         refreshPage(ref, store);
