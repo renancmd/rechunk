@@ -1,0 +1,69 @@
+$C = "../Common.ui";
+
+@BodyStyle = LabelStyle(FontSize: 15, TextColor: #cfd8e3, Wrap: true);
+@PanelBackground = PatchStyle(TexturePath: "../Common/ContainerPanelPatch.png", Border: 4);
+
+$C.@PageOverlay {}
+
+$C.@DecoratedContainer {
+  Anchor: (Width: 780, Height: 640);
+
+  #Title {
+    $C.@Title #ManualTitle {
+      @Text = "ReChunk manual";
+    }
+  }
+
+  #Content {
+    LayoutMode: Top;
+
+    Group {
+      LayoutMode: Left;
+      Anchor: (Height: 35, Bottom: 10);
+
+      Label #LanguageLabel {
+        Text: "Language";
+        FlexWeight: 1;
+        Style: (...$C.@DefaultLabelStyle, VerticalAlignment: Center);
+      }
+
+      $C.@DropdownBox #LanguageInput {
+        Anchor: (Width: 240, Height: $C.@DropdownBoxHeight);
+      }
+    }
+
+    Group #Sections {
+      FlexWeight: 1;
+      LayoutMode: TopScrolling;
+      ScrollbarStyle: $C.@DefaultScrollbarStyle;
+      Background: @PanelBackground;
+      Padding: (Full: 14);
+
+      Label #S1Title { Anchor: (Bottom: 6); Style: $C.@SubtitleStyle; }
+      Label #S1Body { Anchor: (Bottom: 18); Style: @BodyStyle; }
+
+      Label #S2Title { Anchor: (Bottom: 6); Style: $C.@SubtitleStyle; }
+      Label #S2Body { Anchor: (Bottom: 18); Style: @BodyStyle; }
+
+      Label #S3Title { Anchor: (Bottom: 6); Style: $C.@SubtitleStyle; }
+      Label #S3Body { Anchor: (Bottom: 18); Style: @BodyStyle; }
+
+      Label #S4Title { Anchor: (Bottom: 6); Style: $C.@SubtitleStyle; }
+      Label #S4Body { Anchor: (Bottom: 18); Style: @BodyStyle; }
+
+      Label #S5Title { Anchor: (Bottom: 6); Style: $C.@SubtitleStyle; }
+      Label #S5Body { Anchor: (Bottom: 18); Style: @BodyStyle; }
+
+      Label #S6Title { Anchor: (Bottom: 6); Style: $C.@SubtitleStyle; }
+      Label #S6Body { Anchor: (Bottom: 18); Style: @BodyStyle; }
+
+      Label #S7Title { Anchor: (Bottom: 6); Style: $C.@SubtitleStyle; }
+      Label #S7Body { Style: @BodyStyle; }
+    }
+
+    $C.@SecondaryTextButton #CloseButton {
+      @Anchor = (Top: 10);
+      Text: "Close";
+    }
+  }
+}

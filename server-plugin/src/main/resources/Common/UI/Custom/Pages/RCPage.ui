@@ -69,6 +69,11 @@ $C.@DecoratedContainer {
           }
         }
 
+        $C.@SmallSecondaryTextButton #UsePositionButton {
+          @Anchor = (Top: 8);
+          @Text = "Use my position";
+        }
+
         Group {
           LayoutMode: Left;
           Anchor: (Top: 10, Height: 35);

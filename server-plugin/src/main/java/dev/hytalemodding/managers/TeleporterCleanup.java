@@ -27,18 +27,17 @@ public class TeleporterCleanup {
     private static final String TELEPORTER_BLOCK_ID = "Teleporter";
 
     /**
-     * Removes the warps owned by teleporters that stood in the given chunks.
-     * Must run on the world thread. Returns the names of the removed warps.
+     * Names of the warps owned by teleporters standing in the given chunks.
+     * Must run on the world thread.
      */
-    public static List<String> removeTeleporterWarps(World world, Set<Long> chunkIndexes) {
-        List<String> removed = new ArrayList<>();
+    public static List<String> findTeleporterWarps(World world, Set<Long> chunkIndexes) {
+        List<String> found = new ArrayList<>();
 
         try {
             TeleportPlugin teleportPlugin = TeleportPlugin.get();
-            if (teleportPlugin == null || !teleportPlugin.isWarpsLoaded()) return removed;
+            if (teleportPlugin == null || !teleportPlugin.isWarpsLoaded()) return found;
 
-            // Copy: removeWarp changes the map being read
-            for (Warp warp : new ArrayList<>(teleportPlugin.getWarps().values())) {
+            for (Warp warp : teleportPlugin.getWarps().values()) {
                 // Warps made with "/warp set" are just positions and stay valid after a reset
                 if (!Teleporter.CREATOR_IDENTIFIER.equals(warp.getCreator())) continue;
                 if (!world.getName().equals(warp.getWorld())) continue;
@@ -46,14 +45,30 @@ public class TeleporterCleanup {
                 // A teleporter's warp sits in the same block column as the teleporter itself
                 Vector3d position = warp.getTransform().getPosition();
                 long chunkIndex = ChunkUtil.indexChunkFromBlock(position.x(), position.z());
-                if (!chunkIndexes.contains(chunkIndex)) continue;
-
-                if (teleportPlugin.removeWarp(warp.getId())) {
-                    removed.add(warp.getId());
-                }
+                if (chunkIndexes.contains(chunkIndex)) found.add(warp.getId());
             }
         } catch (Exception | LinkageError e) {
             // LinkageError: the built-in teleport plugin is missing or changed in this server version
+            LOGGER.at(Level.WARNING).withCause(e).log("Could not look up teleporter warps");
+        }
+
+        return found;
+    }
+
+    /**
+     * Removes the warps owned by teleporters that stood in the given chunks.
+     * Must run on the world thread. Returns the names of the removed warps.
+     */
+    public static List<String> removeTeleporterWarps(World world, Set<Long> chunkIndexes) {
+        List<String> removed = new ArrayList<>();
+
+        try {
+            for (String warpId : findTeleporterWarps(world, chunkIndexes)) {
+                if (TeleportPlugin.get().removeWarp(warpId)) {
+                    removed.add(warpId);
+                }
+            }
+        } catch (Exception | LinkageError e) {
             LOGGER.at(Level.WARNING).withCause(e).log("Could not clean up teleporter warps");
         }
 

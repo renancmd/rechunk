@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -37,8 +38,8 @@ public class ChunkRegenManager {
     private static final String COLOR_ERROR = "#FF5555";
     private static final String COLOR_SUCCESS = "#55FF55";
 
-    // Worlds with a run in progress; only one run per world is allowed
-    private static final Set<World> RUNNING_WORLDS = ConcurrentHashMap.newKeySet();
+    // The run in progress for each world; only one run per world is allowed
+    private static final Map<World, Job> RUNNING_JOBS = new ConcurrentHashMap<>();
 
     // State of one regeneration run; only touched from the world thread
     private static final class Job {
@@ -50,6 +51,8 @@ public class ChunkRegenManager {
         final Set<Long> removedChunks = new HashSet<>();
         int done = 0;
         int lastReportedStep = 0;
+        // Set by "/rechunk cancel", possibly from another thread
+        volatile boolean cancelled = false;
 
         Job(World world, PlayerRef player, List<BlockPos> targetChunks) {
             this.world = world;
@@ -63,7 +66,16 @@ public class ChunkRegenManager {
     private record PendingRemoval(BlockPos pos, boolean unloaded, CompletableFuture<Void> removal) {}
 
     public static boolean isRunning(World world) {
-        return RUNNING_WORLDS.contains(world);
+        return RUNNING_JOBS.containsKey(world);
+    }
+
+    // Asks the run of this world to stop after its current batch. Returns false if nothing is running.
+    public static boolean cancel(World world) {
+        Job job = RUNNING_JOBS.get(world);
+        if (job == null) return false;
+
+        job.cancelled = true;
+        return true;
     }
 
     public static void startRegeneration(World world, PlayerRef player, List<BlockPos> targetChunks) {
@@ -72,13 +84,13 @@ public class ChunkRegenManager {
             return;
         }
 
-        // add() is atomic, so two simultaneous starts cannot both pass
-        if (!RUNNING_WORLDS.add(world)) {
+        Job job = new Job(world, player, targetChunks);
+
+        // putIfAbsent() is atomic, so two simultaneous starts cannot both pass
+        if (RUNNING_JOBS.putIfAbsent(world, job) != null) {
             notify(player, "Error: a regeneration is already running in this world. Wait for it to finish.", COLOR_ERROR);
             return;
         }
-
-        Job job = new Job(world, player, targetChunks);
         notify(player, "Starting regeneration of " + job.total + " chunks...", null);
 
         processBatch(job);
@@ -136,7 +148,7 @@ public class ChunkRegenManager {
             job.done++;
         }
 
-        if (job.queue.isEmpty()) {
+        if (job.queue.isEmpty() || job.cancelled) {
             finish(job);
             return;
         }
@@ -186,7 +198,7 @@ public class ChunkRegenManager {
     }
 
     private static void finish(Job job) {
-        RUNNING_WORLDS.remove(job.world);
+        RUNNING_JOBS.remove(job.world);
 
         // One flush for the whole run instead of one per chunk
         boolean flushed = true;
@@ -211,8 +223,15 @@ public class ChunkRegenManager {
             notify(job.player, "Warning: the chunk storage could not be flushed to disk. Check the server log.", COLOR_ERROR);
         }
 
+        if (!job.queue.isEmpty()) {
+            notify(job.player, "Cancelled at " + progress(job) + ". The chunks already processed will regenerate; "
+                    + "the remaining " + job.queue.size() + " were left untouched.", COLOR_ERROR);
+        }
+
         if (job.failed.isEmpty()) {
-            notify(job.player, progress(job) + " - regeneration complete!", COLOR_SUCCESS);
+            if (job.queue.isEmpty()) {
+                notify(job.player, progress(job) + " - regeneration complete!", COLOR_SUCCESS);
+            }
             return;
         }
 
@@ -224,12 +243,12 @@ public class ChunkRegenManager {
         }
         if (job.failed.size() > MAX_FAILURES_LISTED) coords.append("; ...");
 
-        notify(job.player, "Finished with errors: " + job.failed.size() + " of " + job.total
+        notify(job.player, "Finished with errors: " + job.failed.size() + " of " + job.done
                 + " chunks could not be regenerated (" + coords + "). Check the server log.", COLOR_ERROR);
     }
 
     private static void abort(Job job, Throwable error) {
-        RUNNING_WORLDS.remove(job.world);
+        RUNNING_JOBS.remove(job.world);
         LOGGER.at(Level.SEVERE).withCause(error).log("Regeneration aborted at %d/%d chunks", job.done, job.total);
         notify(job.player, "Error: regeneration stopped at " + progress(job) + ". Reason: " + error
                 + ". Check the server log.", COLOR_ERROR);

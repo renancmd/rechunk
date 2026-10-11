@@ -16,6 +16,8 @@ import javax.annotation.Nonnull;
 public class RCCommand extends AbstractPlayerCommand {
     public RCCommand() {
         super("rechunk", "Open rechunk page.");
+        addSubCommand(new RCManualCommand());
+        addSubCommand(new RCCancelCommand());
     }
 
     @Override

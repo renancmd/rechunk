@@ -1,0 +1,45 @@
+manual.title = ReChunk manual
+manual.language = Language
+manual.close = Close
+
+manual.s1.title = What ReChunk does
+manual.s1.body = When Hytale gets an update, new biomes, creatures and structures only appear in terrain that has never been generated. Places you have already explored stay as they were.\n\
+\n\
+ReChunk deletes the chunks you choose so the game generates them again with the new content, while your builds stay safe. A chunk is a column of the world that is 32 by 32 blocks wide.
+
+manual.s2.title = Before you start
+manual.s2.body = - A deleted chunk cannot be recovered by ReChunk. Everything built in it is lost.\n\
+- Make sure you have a backup of your world. Hytale creates automatic backups in the "backup" folder of the world (every 30 minutes by default).\n\
+- You need operator permission to use the commands. In single player, run /op self.\n\
+- Test on a copy of your world first if you are not sure.
+
+manual.s3.title = Selecting chunks
+manual.s3.body = Open the page with /rechunk.\n\
+\n\
+1. Type the X and Z of a block, or press "Use my position" to fill them with where you are standing. Press F7 in game to see coordinates.\n\
+2. Choose the buffer. It adds the chunks around that position: 0 selects only that chunk, 1 selects a 3 by 3 square, 2 selects 5 by 5, up to 9 (19 by 19).\n\
+3. Press "Add to selection". The chunks appear in the list on the right, and the one you typed is highlighted.\n\
+\n\
+You can repeat this for several places. Use "Remove" to take one chunk off the list, or "Clear" to empty it.
+
+manual.s4.title = The two modes
+manual.s4.body = Protect selection: keeps the chunks on your list and deletes everything around them. The deleted area is a square of 65 by 65 chunks (about 1,000 blocks in each direction) centred on the first chunk of the list. Use it to keep your base and refresh the world around it.\n\
+\n\
+Reset selection: deletes only the chunks on your list and leaves the rest of the world alone. Use it to refresh one specific place.
+
+manual.s5.title = Starting, progress and cancelling
+manual.s5.body = Press "Start". A confirmation shows how many chunks will be deleted and which teleporters are affected. Nothing is deleted until you press "Regenerate".\n\
+\n\
+The page then closes and the progress appears in the chat, as a percentage and a chunk count. Errors are also reported in the chat, in red.\n\
+\n\
+Only one regeneration can run in a world at a time. To stop one, run /rechunk cancel. The chunks already processed will still regenerate; the remaining ones are left untouched.
+
+manual.s6.title = Teleporters
+manual.s6.body = A teleporter standing in a deleted chunk is removed with it. ReChunk also removes its destination from the other teleporters, so nobody is sent to a place with no way back.\n\
+\n\
+Warps created with /warp set are kept, because they are only a position.
+
+manual.s7.title = Commands
+manual.s7.body = /rechunk - opens the ReChunk page.\n\
+/rechunk manual - opens this manual.\n\
+/rechunk cancel - stops the regeneration running in your world.
