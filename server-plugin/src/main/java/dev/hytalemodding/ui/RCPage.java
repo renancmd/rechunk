@@ -312,6 +312,12 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
                     if (playerEntity != null) {
                         World world = playerEntity.getWorld();
 
+                        // Checked before closing so the selection is kept for a later retry
+                        if (ChunkRegenManager.isRunning(world)) {
+                            statusText = "A regeneration is already running in this world. Wait for it to finish.";
+                            break;
+                        }
+
                         // The job keeps running on the world thread and reports through chat,
                         // so the page is closed and the selection reset before it starts.
                         SelectionManager.clearSelections(uuidComponent.getUuid());

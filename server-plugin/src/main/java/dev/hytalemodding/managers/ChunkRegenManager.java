@@ -17,13 +17,18 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 public class ChunkRegenManager {
 
     private static final HytaleLogger LOGGER = HytaleLogger.forEnclosingClass();
 
-    private static final int CHUNKS_PER_TICK = 5; // Higher = Faster but more Lag
+    private static final int CHUNKS_PER_BATCH = 5; // Higher = Faster but more Lag
+    private static final int BATCH_TIMEOUT_SECONDS = 60;
     private static final int PROGRESS_STEP_PERCENT = 10;
     private static final int MAX_FAILURES_LISTED = 5;
 
@@ -31,7 +36,10 @@ public class ChunkRegenManager {
     private static final String COLOR_ERROR = "#FF5555";
     private static final String COLOR_SUCCESS = "#55FF55";
 
-    // State of one regeneration run, carried from tick to tick
+    // Worlds with a run in progress; only one run per world is allowed
+    private static final Set<World> RUNNING_WORLDS = ConcurrentHashMap.newKeySet();
+
+    // State of one regeneration run; only touched from the world thread
     private static final class Job {
         final World world;
         final PlayerRef player;
@@ -49,34 +57,79 @@ public class ChunkRegenManager {
         }
     }
 
+    // A chunk whose disk removal has been requested but may not have finished yet
+    private record PendingRemoval(BlockPos pos, boolean unloaded, CompletableFuture<Void> removal) {}
+
+    public static boolean isRunning(World world) {
+        return RUNNING_WORLDS.contains(world);
+    }
+
     public static void startRegeneration(World world, PlayerRef player, List<BlockPos> targetChunks) {
         if (world.getChunkStore().getSaver() == null) {
             notify(player, "Error: this world has no chunk storage, nothing was regenerated.", COLOR_ERROR);
             return;
         }
 
+        // add() is atomic, so two simultaneous starts cannot both pass
+        if (!RUNNING_WORLDS.add(world)) {
+            notify(player, "Error: a regeneration is already running in this world. Wait for it to finish.", COLOR_ERROR);
+            return;
+        }
+
         Job job = new Job(world, player, targetChunks);
         notify(player, "Starting regeneration of " + job.total + " chunks...", null);
 
-        processQueue(job);
+        processBatch(job);
     }
 
-    private static void processQueue(Job job) {
+    // Runs on the world thread: unloads a batch and requests its removal from disk
+    private static void processBatch(Job job) {
         try {
-            // Process a batch of chunks
-            for (int i = 0; i < CHUNKS_PER_TICK && !job.queue.isEmpty(); i++) {
-                BlockPos pos = job.queue.poll();
-                if (!regenerateSingleChunk(job.world, pos.chunkX(), pos.chunkZ())) {
-                    job.failed.add(pos);
-                }
-                job.done++;
+            List<PendingRemoval> batch = new ArrayList<>();
+            for (int i = 0; i < CHUNKS_PER_BATCH && !job.queue.isEmpty(); i++) {
+                batch.add(removeChunk(job.world, job.queue.poll()));
             }
+
+            CompletableFuture<?>[] removals = batch.stream().map(PendingRemoval::removal).toArray(CompletableFuture[]::new);
+
+            // The disk work happens on the storage threads. Instead of blocking the world
+            // thread until it is done, the next step is scheduled back on the world thread.
+            CompletableFuture.allOf(removals)
+                    .orTimeout(BATCH_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .handleAsync((ignored, error) -> {
+                        completeBatch(job, batch);
+                        return null;
+                    }, job.world)
+                    .exceptionally(error -> {
+                        abort(job, error);
+                        return null;
+                    });
         } catch (Exception e) {
-            LOGGER.at(Level.SEVERE).withCause(e).log("Regeneration aborted at %d/%d chunks", job.done, job.total);
-            notify(job.player, "Error: regeneration stopped at " + progress(job) + ". Reason: " + e
-                    + ". Check the server log.", COLOR_ERROR);
-            refreshClientChunks(job.world, job.player);
-            return;
+            abort(job, e);
+        }
+    }
+
+    // Runs on the world thread once the removals of a batch finished (or timed out)
+    private static void completeBatch(Job job, List<PendingRemoval> batch) {
+        for (PendingRemoval pending : batch) {
+            BlockPos pos = pending.pos();
+            boolean removed = false;
+
+            if (!pending.removal().isDone()) {
+                LOGGER.at(Level.WARNING).log("Timed out deleting chunk %d, %d from disk", pos.chunkX(), pos.chunkZ());
+            } else {
+                try {
+                    pending.removal().join(); // Already done: returns or throws immediately
+                    removed = true;
+                } catch (Exception e) {
+                    LOGGER.at(Level.WARNING).withCause(e).log("Could not delete chunk %d, %d from disk", pos.chunkX(), pos.chunkZ());
+                }
+            }
+
+            if (!removed || !pending.unloaded()) {
+                job.failed.add(pos);
+            }
+            job.done++;
         }
 
         if (job.queue.isEmpty()) {
@@ -85,9 +138,35 @@ public class ChunkRegenManager {
         }
 
         reportProgress(job);
+        processBatch(job);
+    }
 
-        // Schedule the next batch for the next server tick
-        job.world.execute(() -> processQueue(job));
+    private static PendingRemoval removeChunk(World world, BlockPos pos) {
+        int chunkX = pos.chunkX();
+        int chunkZ = pos.chunkZ();
+        ChunkStore chunkStore = world.getChunkStore();
+        boolean unloaded = true;
+
+        // Unload from RAM (only if the chunk is currently loaded)
+        try {
+            Ref<ChunkStore> chunkRef = chunkStore.getChunkReference(ChunkUtil.indexChunk(chunkX, chunkZ));
+            if (chunkRef != null && chunkRef.isValid()) {
+                chunkStore.remove(chunkRef, RemoveReason.UNLOAD);
+            }
+        } catch (Exception e) {
+            unloaded = false;
+            LOGGER.at(Level.WARNING).withCause(e).log("Could not unload chunk %d, %d", chunkX, chunkZ);
+        }
+
+        // Request the delete from disk; the saver runs it on its own I/O thread
+        CompletableFuture<Void> removal;
+        try {
+            removal = chunkStore.getSaver().removeHolder(chunkX, chunkZ);
+        } catch (Exception e) {
+            removal = CompletableFuture.failedFuture(e);
+        }
+
+        return new PendingRemoval(pos, unloaded, removal);
     }
 
     private static void reportProgress(Job job) {
@@ -103,8 +182,23 @@ public class ChunkRegenManager {
     }
 
     private static void finish(Job job) {
+        RUNNING_WORLDS.remove(job.world);
+
+        // One flush for the whole run instead of one per chunk
+        boolean flushed = true;
+        try {
+            job.world.getChunkStore().getSaver().flush();
+        } catch (Exception e) {
+            flushed = false;
+            LOGGER.at(Level.WARNING).withCause(e).log("Could not flush chunk storage after regeneration");
+        }
+
         // Refresh client chunks once at the end to ensure they see the changes
         refreshClientChunks(job.world, job.player);
+
+        if (!flushed) {
+            notify(job.player, "Warning: the chunk storage could not be flushed to disk. Check the server log.", COLOR_ERROR);
+        }
 
         if (job.failed.isEmpty()) {
             notify(job.player, progress(job) + " - regeneration complete!", COLOR_SUCCESS);
@@ -123,34 +217,12 @@ public class ChunkRegenManager {
                 + " chunks could not be regenerated (" + coords + "). Check the server log.", COLOR_ERROR);
     }
 
-    // Returns false if the chunk could not be fully removed
-    private static boolean regenerateSingleChunk(World world, int chunkX, int chunkZ) {
-        boolean ok = true;
-        ChunkStore chunkStore = world.getChunkStore();
-        long chunkIndex = ChunkUtil.indexChunk(chunkX, chunkZ);
-
-        // Unload from RAM (only if the chunk is currently loaded)
-        try {
-            Ref<ChunkStore> chunkRef = chunkStore.getChunkReference(chunkIndex);
-            if (chunkRef != null && chunkRef.isValid()) {
-                chunkStore.remove(chunkRef, RemoveReason.UNLOAD);
-            }
-        } catch (Exception e) {
-            ok = false;
-            LOGGER.at(Level.WARNING).withCause(e).log("Could not unload chunk %d, %d", chunkX, chunkZ);
-        }
-
-        // Delete from Disk (This is usually blocking, be careful)
-        try {
-            IChunkSaver saver = chunkStore.getSaver();
-            saver.removeHolder(chunkX, chunkZ).join();
-            saver.flush();
-        } catch (Exception e) {
-            ok = false;
-            LOGGER.at(Level.WARNING).withCause(e).log("Could not delete chunk %d, %d from disk", chunkX, chunkZ);
-        }
-
-        return ok;
+    private static void abort(Job job, Throwable error) {
+        RUNNING_WORLDS.remove(job.world);
+        LOGGER.at(Level.SEVERE).withCause(error).log("Regeneration aborted at %d/%d chunks", job.done, job.total);
+        notify(job.player, "Error: regeneration stopped at " + progress(job) + ". Reason: " + error
+                + ". Check the server log.", COLOR_ERROR);
+        refreshClientChunks(job.world, job.player);
     }
 
     private static void refreshClientChunks(World world, PlayerRef player) {
