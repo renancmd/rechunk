@@ -51,8 +51,8 @@ build/
 # Logs
 *.log
 
-# Maven wrapper exception
-!.mvn/wrapper/maven-wrapper.jar
+# Gradle wrapper exception
+!**/gradle/wrapper/gradle-wrapper.jar
 
 # Allow build folders inside src (Maven/Gradle conventions)
 !**/src/main/**/target/
