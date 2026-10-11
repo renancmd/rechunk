@@ -20,7 +20,9 @@ manual.s3.body = Open the page with /rechunk.\n\
 2. Choose the buffer. It adds the chunks around that position: 0 selects only that chunk, 1 selects a 3 by 3 square, 2 selects 5 by 5, up to 9 (19 by 19).\n\
 3. Press "Add to selection". The chunks appear in the list on the right, and the one you typed is highlighted.\n\
 \n\
-You can repeat this for several places. Use "Remove" to take one chunk off the list, or "Clear" to empty it.
+You can repeat this for several places. Use "Remove" to take one chunk off the list, or "Clear" to empty it.\n\
+\n\
+Your selection is saved, so it is still there after you leave the world and come back.
 
 manual.s4.title = The two modes
 manual.s4.body = Protect selection: keeps the chunks on your list and deletes everything around them. The deleted area is a square of 65 by 65 chunks (about 1,000 blocks in each direction) centred on the first chunk of the list. Use it to keep your base and refresh the world around it.\n\

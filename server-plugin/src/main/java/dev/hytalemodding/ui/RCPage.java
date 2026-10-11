@@ -413,6 +413,7 @@ public class RCPage extends InteractiveCustomUIPage<RCPage.SaveCoordsEventData> 
                         SelectionManager.addSelection(uuidComponent.getUuid(), targetBlockX, targetBlockZ, isOrigin);
                     }
                 }
+                SelectionManager.save(uuidComponent.getUuid());
                 break;
 
             case "Remove":

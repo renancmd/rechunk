@@ -20,7 +20,9 @@ manual.s3.body = Abra a tela com /rechunk.\n\
 2. Escolha o buffer. Ele adiciona os chunks em volta daquela posição: 0 seleciona só aquele chunk, 1 seleciona um quadrado de 3 por 3, 2 seleciona 5 por 5, até 9 (19 por 19).\n\
 3. Clique em "Add to selection". Os chunks aparecem na lista à direita, e o que você digitou fica destacado.\n\
 \n\
-Você pode repetir isso para vários lugares. Use "Remove" para tirar um chunk da lista ou "Clear" para esvaziá-la.
+Você pode repetir isso para vários lugares. Use "Remove" para tirar um chunk da lista ou "Clear" para esvaziá-la.\n\
+\n\
+A sua seleção fica salva, então continua lá depois que você sai do mundo e volta.
 
 manual.s4.title = Os dois modos
 manual.s4.body = Protect selection: mantém os chunks da sua lista e apaga tudo em volta deles. A área apagada é um quadrado de 65 por 65 chunks (cerca de 1.000 blocos em cada direção), centrado no primeiro chunk da lista. Use para manter a sua base e renovar o mundo em volta dela.\n\
