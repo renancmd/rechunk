@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "dev.hytalemodding"
-version = "1.0.0"
+version = "1.1.0"
 
 // Machine-specific paths live in ~/.gradle/gradle.properties, not in the repo.
 val hytaleServerJar = providers.gradleProperty("hytaleServerJar").orNull
